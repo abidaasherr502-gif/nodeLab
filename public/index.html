@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NodeLab - Login & Signup</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .form-box {
+            background: white;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background: #333;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 15px;
+            min-height: 20px;
+        }
+
+        @media (max-width: 700px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>NodeLab User System</h1>
+
+    <div class="container">
+
+        <!-- Sign Up -->
+        <div class="form-box">
+            <h2>Sign Up</h2>
+
+            <form id="signupForm">
+                <label>Name</label>
+                <input type="text" id="signupName" required>
+
+                <label>Email</label>
+                <input type="email" id="signupEmail" required>
+
+                <label>Password</label>
+                <input type="password" id="signupPassword" required>
+
+                <button type="submit">Create Account</button>
+            </form>
+
+            <div id="signupMessage" class="message"></div>
+        </div>
+
+        <!-- Login -->
+        <div class="form-box">
+            <h2>Log In</h2>
+
+            <form id="loginForm">
+                <label>Email</label>
+                <input type="email" id="loginEmail" required>
+
+                <label>Password</label>
+                <input type="password" id="loginPassword" required>
+
+                <button type="submit">Log In</button>
+            </form>
+
+            <div id="loginMessage" class="message"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // Sign Up
+        document.getElementById("signupForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const name = document.getElementById("signupName").value;
+            const email = document.getElementById("signupEmail").value;
+            const password = document.getElementById("signupPassword").value;
+
+            const response = await fetch("/signup", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name,
+                    email,
+                    password
+                })
+            });
+
+            const data = await response.json();
+
+            document.getElementById("signupMessage").textContent = data.message;
+
+            if (response.ok) {
+                document.getElementById("signupForm").reset();
+            }
+        });
+
+        // Login
+        document.getElementById("loginForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const email = document.getElementById("loginEmail").value;
+            const password = document.getElementById("loginPassword").value;
+
+            const response = await fetch("/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email,
+                    password
+                })
+            });
+
+            const data = await response.json();
+
+            document.getElementById("loginMessage").textContent = data.message;
+
+            if (response.ok) {
+                localStorage.setItem("userName", data.name);
+                window.location.href = "/dashboard.html";
+            }
+        });
+    </script>
+
+</body>
+</html>
