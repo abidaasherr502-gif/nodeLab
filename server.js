@@ -1,4 +1,5 @@
 const express = require("express");
+const fs = require("fs");
 const EventEmitter = require("events");
 const path = require("path");
 const { MongoClient } = require("mongodb");
@@ -61,6 +62,8 @@ app.post("/signup", async (req, res) => {
 
         await usersCollection.insertOne(newUser);
 
+        userEvents.emit("signup", newUser);
+
         res.json({
             success: true,
             message: "Signup successful"
@@ -91,6 +94,7 @@ app.post("/login", async (req, res) => {
                 message: "Invalid email or password"
             });
         }
+        userEvents.emit("login", user);
 
         res.json({
             success: true,
