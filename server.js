@@ -1,28 +1,29 @@
 const express = require("express");
-const fs = require("fs");
 const EventEmitter = require("events");
 const path = require("path");
+const { MongoClient } = require("mongodb");
 
 const app = express();
 const PORT = 3000;
+const client = new MongoClient("mongodb://localhost:27017");
 
-const usersFile = path.join(__dirname, "users.json");
+let usersCollection;
+
+async function connectDB() {
+    await client.connect();
+
+    const db = client.db("nodelab");
+    usersCollection = db.collection("users");
+
+    console.log("MongoDB connected");
+}
+
+
 const auditFile = path.join(__dirname, "audit.log");
 
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
-
-// Read users from users.json
-function readUsers() {
-    const data = fs.readFileSync(usersFile, "utf8");
-    return JSON.parse(data);
-}
-
-// Save users to users.json
-function saveUsers(users) {
-    fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
-}
 
 // Create custom EventEmitter
 const userEvents = new EventEmitter();
@@ -39,77 +40,78 @@ userEvents.on("login", (user) => {
     fs.appendFileSync(auditFile, message);
 });
 
-// Signup route
-app.post("/signup", (req, res) => {
+app.post("/signup", async (req, res) => {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-        return res.status(400).json({
-            message: "Please fill in all fields."
+    try {
+        const existingUser = await usersCollection.findOne({ email });
+
+        if (existingUser) {
+            return res.json({
+                success: false,
+                message: "Email already registered"
+            });
+        }
+
+        const newUser = {
+            name,
+            email,
+            password
+        };
+
+        await usersCollection.insertOne(newUser);
+
+        res.json({
+            success: true,
+            message: "Signup successful"
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        res.status(500).json({
+            success: false,
+            message: "Server error"
         });
     }
-
-    const users = readUsers();
-
-    const existingUser = users.find(
-        user => user.email.toLowerCase() === email.toLowerCase()
-    );
-
-    if (existingUser) {
-        return res.status(400).json({
-            message: "Email already registered."
-        });
-    }
-
-    const newUser = {
-        name,
-        email,
-        password
-    };
-
-    users.push(newUser);
-    saveUsers(users);
-
-    userEvents.emit("signup", newUser);
-
-    res.json({
-        message: "Account created successfully!"
-    });
 });
 
-// Login route
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({
-            message: "Please enter email and password."
+    try {
+        const user = await usersCollection.findOne({
+            email: email,
+            password: password
+        });
+
+        if (!user) {
+            return res.json({
+                success: false,
+                message: "Invalid email or password"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Login successful",
+            name: user.name
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        res.status(500).json({
+            success: false,
+            message: "Server error"
         });
     }
-
-    const users = readUsers();
-
-    const user = users.find(
-        user =>
-            user.email.toLowerCase() === email.toLowerCase() &&
-            user.password === password
-    );
-
-    if (!user) {
-        return res.status(401).json({
-            message: "Invalid email or password."
-        });
-    }
-
-    userEvents.emit("login", user);
-
-    res.json({
-        message: "Login successful!",
-        name: user.name
-    });
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
+}).catch(err => {
+    console.error("MongoDB connection failed:", err);
 });
